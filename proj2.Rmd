@@ -6,11 +6,16 @@ output: html_document
 ---
 
 ```{r}
-
+library(readr)
+oscars <- read_csv("oscars.csv")
 ```
 
 
 ```{r}
+
+
+
+
 
 ```
 
