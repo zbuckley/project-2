@@ -32,7 +32,8 @@ package_apply_all(
     'readr', # for loading data from various formats
     'dplyr', # because we all need a little magic
     'ggplot2', # pretty graphs
-    'tidyr' # needed for the gather function
+    'tidyr', # needed for the gather function
+    'data.table' # needed to drop some missing values
   ), require)
 ```
 
@@ -214,7 +215,6 @@ for(i in titles_missing_values){
 Nop, let's drop them too.
 
 ```{r}
-library(data.table)
 oscars = data.table(oscars)
 oscars = na.omit(oscars, c("certificate"))
 dim(oscars)
@@ -237,10 +237,11 @@ unique(oscars$certificate)
 ### Some more preprocessing:
 
 ```{r}
-# Drops movie and movie_id and synopsis
+# Drops movie and movie_id, synopsis and gross
 oscars$movie <- NULL
 oscars$movie_id <- NULL 
 oscars$synopsis <- NULL 
+oscars$gross <- NULL 
 
 # Drops the Oscars_category_won columns (will use them later as targets, but for now we cannot use them to predict)
 oscars$Oscar_Best_Actor_won <- NULL
