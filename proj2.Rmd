@@ -5,24 +5,75 @@ date: "December 1, 2018"
 output: html_document
 ---
 
-```{r}
-library(readr)
-oscars <- read_csv("oscars.csv")
+```{r install_functions, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+##Helper Functions here for cleanly handling imports
+#install_all - function for installing all packages in a list that aren't available
+#  inspired by https://stackoverflow.com/questions/4090169/elegant-way-to-check-for-missing-packages-and-install-them
+#  ex: install_all(c('readr', 'dplyr'))
+install_all <- function(list.of.packages) {
+  need_install <- list.of.packages[!(list.of.packages %in% installed.packages()[,"Package"])]
+  if(length(need_install)) install.packages(need_install)
+}
+
+# package_apply_all - function for calling install_all on list of packages, then applying a function to them
+#  inspired by https://stackoverflow.com/questions/8175912/load-multiple-packages-at-once
+#  ex: package_apply_all(c('readr', 'dplyr'), require)
+package_apply_all <- function(list.of.packages, func) {
+  install_all(list.of.packages)
+  invisible(lapply(list.of.packages, func, character.only = TRUE))
+}
 ```
 
 
-```{r}
+```{r imports, include=FALSE}
+package_apply_all(
+  c(
+    'readr', # for loading data from various formats
+    'dplyr', # because we all need a little magic
+    'ggplot2', # pretty graphs
+    'tidyr' # needed for the gather function
+  ), require)
+```
 
-
-
-
+```{r helpers}
+# Pull in Consumer Price Index Data from 
+# Burea of Labor Statistics to account for inflation
+cpi <- read_csv('CPI_20181201.csv')
+# data ranged from 2000 (1) to 2017 (18)
+# so... year mod 2000 + 1 is the indexing scheme.
+# NOTE: if cpi csv file is changed the indexing scheme will need updating
+cpif <- function(year) {
+  idx <- year %% 2000 + 1
+  cpi$Annual[idx]
+}
 
 ```
 
+```{r initialize}
+# oscars data
+oscars <- read_csv("oscars.csv", col_types = cols()) %>% mutate(
+  sc.gross = gross * cpif(2000)/cpif(year) # "In 2000 dollars"
+)
+```
 
+```{r currency_validation}
+# probably not something to keep... but still interesting... 
+currency_info <- oscars %>% select(
+  gross, sc.gross, year
+) %>% mutate(
+  diff = gross - sc.gross
+) %>% group_by(year) %>% summarize(
+  n=n(),
+  diff_mn = mean(diff, na.rm = TRUE),
+  gross_mn = mean(gross, na.rm = TRUE),
+  sc.gross_mn = mean(sc.gross, na.rm = TRUE)
+)
 
-```{r}
-
+currency_info %>% 
+  gather(key, value, gross_mn, sc.gross_mn) %>%
+  ggplot(aes(x=year, y=value, colour=key)) + 
+  geom_line()
 ```
 
 ## Pedro's issues
