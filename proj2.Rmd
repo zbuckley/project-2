@@ -24,3 +24,250 @@ oscars <- read_csv("oscars.csv")
 ```{r}
 
 ```
+
+## Pedro's issues
+
+### Target: Won At Least One Oscar
+
+```{r}
+# Gets the columns where an oscar is won
+oscars_won_columns <- c()
+# For each name of each column in oscars
+for(i in names(oscars)){
+  # If "Oscar" and "won" are in such name
+  if(grepl("Oscar", i) == TRUE & grepl("won", i) == TRUE){
+    # Appends name of column to the list
+    oscars_won_columns <- c(oscars_won_columns, i)
+  }
+}
+
+library(dplyr)
+# Turns every "No"" to 0 and every "Yes" to 1 
+
+# Failed attempt at looping this
+loopp <- function(...){
+  kwargs <- list(...)
+  for(i in kwargs){
+    name <- kwargs$i
+    print(name)
+    oscars <- oscars %>% mutate(name = 
+                              ifelse(name == "No", 0, 1))
+  }
+}
+
+loopp(oscars_won_columns)
+
+# Doing it by hand (not going to waste time trying to automate this shit...)
+oscars <- oscars %>% mutate(Oscar_Best_Picture_won = 
+                              ifelse(Oscar_Best_Picture_won == "No", 0, 1))
+
+oscars <- oscars %>% mutate(Oscar_Best_Director_won = 
+                              ifelse(Oscar_Best_Director_won == "No", 0, 1))
+
+oscars <- oscars %>% mutate(Oscar_Best_Actor_won = 
+                              ifelse(Oscar_Best_Actor_won == "No", 0, 1))
+
+oscars <- oscars %>% mutate(Oscar_Best_Actress_won = 
+                              ifelse(Oscar_Best_Actress_won == "No", 0, 1))
+
+oscars <- oscars %>% mutate(Oscar_Best_Supporting_Actor_won = 
+                              ifelse(Oscar_Best_Supporting_Actor_won == "No", 0, 1))
+
+oscars <- oscars %>% mutate(Oscar_Best_Supporting_Actress_won = 
+                              ifelse(Oscar_Best_Supporting_Actress_won == "No", 0, 1))
+
+oscars <- oscars %>% mutate(Oscar_Best_AdaScreen_won = 
+                              ifelse(Oscar_Best_AdaScreen_won == "No", 0, 1))
+
+oscars <- oscars %>% mutate(Oscar_Best_OriScreen_won = 
+                              ifelse(Oscar_Best_OriScreen_won == "No", 0, 1))
+
+# Creates the new column
+oscars = transform(oscars, Oscars_won_some=rowSums(oscars[oscars_won_columns]))
+# Checks if it is right
+oscars_won_best_picture <- subset(oscars, Oscar_Best_Picture_won == 1)
+lord_of_the_rings_king <- head(oscars_won_best_picture, 1)
+#View(lord_of_the_rings_king[c(1:40)])
+# This movie won 3 oscars, let's see if it checks out
+lord_of_the_rings_king$Oscars_won_some
+# Yeyyyy. Let's check with another one
+Gladiator <- head(oscars_won_best_picture, 2)
+#View(Gladiator[c(1:40)])
+# This movie won 2 oscars
+Gladiator$Oscars_won_some
+# Yeap
+
+# Encodes the target
+unique(oscars$Oscars_won_some)
+oscars = oscars %>% mutate(Oscars_won_some = 
+                             replace(Oscars_won_some, Oscars_won_some == 1, 1))
+oscars = oscars %>% mutate(Oscars_won_some = 
+                             replace(Oscars_won_some, Oscars_won_some == 2, 1))
+oscars = oscars %>% mutate(Oscars_won_some = 
+                             replace(Oscars_won_some, Oscars_won_some == 3, 1))
+oscars = oscars %>% mutate(Oscars_won_some = 
+                             replace(Oscars_won_some, Oscars_won_some == 4, 1))
+oscars$Oscars_won_some = as.numeric(oscars$Oscars_won_some)
+unique(oscars$Oscars_won_some)
+```
+
+
+### Awards_wins
+
+`awards_wins`... does it count the Oscars too?
+```{r}
+# Gets the movies that won Oscars for best picture 
+oscars_won_best_picture <- subset(oscars, Oscar_Best_Picture_won == 1)
+dim(oscars_won_best_picture)
+#View(head(oscars_won_best_picture[c(1:40)]))
+# Gets the first movie of such list
+lord_of_the_rings_king <- head(oscars_won_best_picture, 1)
+#View(lord_of_the_rings_king)
+# Gets the number of awards it won, not counting the Oscars 
+num_awards_won <- 0
+# For every column name in the Series
+for (i in names(lord_of_the_rings_king)){
+  # If "won"" is in such name
+  if(grepl("won", i) == TRUE){
+    # And if "Oscar" and "categories" is not
+     if(grepl("Oscar", i) == FALSE){
+       if(grepl("categories", i) == FALSE){
+         # Add to num_awards_won the value of such column
+         num_awards_won = num_awards_won + lord_of_the_rings_king[c(i)][[1]]
+       }
+      }
+  }
+}
+# Prints the value of awards_wins
+lord_of_the_rings_king[c("awards_wins")]
+# Prints the number of awards it won, not counting the Oscars
+num_awards_won
+```
+It does NOT!! Which is good for us. 
+
+
+### Certificate
+
+Encode `certificate`, which follows this [system](https://www.wikiwand.com/en/Motion_Picture_Association_of_America_film_rating_system) and this [one](https://www.wikiwand.com/en/TV_parental_guidelines_(US)#/TV-MA). 
+
+```{r}
+# Prints the unique values of the certificate column
+unique(oscars$certificate)
+# Prints the movies "Unrated" and "Not Rated"
+subset(oscars, certificate == "Not Rated")[c("movie")]
+subset(oscars, certificate == "Unrated")[c("movie")]
+```
+
+Let's get rid of these rows. They would only make us create more columns for `certificate`, as we can't encode them, and they are not well known movies (aside from The Great Beauty...) and didn't win any oscars. It's either this or treat `certificate` as a factor (which will be converted by R into dummies, i.e, more columns).
+
+```{r}
+# Gets the indexes of such rows
+not_rated_index = as.numeric(rownames(subset(oscars, certificate == "Not Rated")[c("movie")]))
+unrated_index =  as.numeric(rownames(subset(oscars, certificate == "Unrated")[c("movie")]))
+
+# Checks if any of them won an oscar
+for(i in 1:nrow(oscars[not_rated_index, ])){
+  if(oscars[not_rated_index, ]$Oscars_won_some[i]){
+    print("Yes")
+  }
+}
+for(i in 1:nrow(oscars[unrated_index, ])){
+  if(oscars[unrated_index, ]$Oscars_won_some[i]){
+    print("Yes")
+  }
+}
+```
+
+Alright, let's drop'em.
+
+```{r}
+dim(oscars)
+drop_index = c(not_rated_index, unrated_index)
+oscars = oscars[-drop_index,]
+dim(oscars)
+```
+
+And now encode the column
+
+```{r}
+unique(oscars$certificate)
+sum(is.na(oscars$certificate))
+```
+
+let's actually see if we can get the missing values imputed first.
+
+```{r}
+titles_missing_values = oscars[is.na(oscars$certificate), ]$movie
+titles_missing_values
+```
+
+If we look up these titles in IMDB, they are not rated. Let's check once again if they won any oscars.
+
+```{r}
+for(i in titles_missing_values){
+  if(subset(oscars, movie == i)$Oscars_won_some != 0){
+    print("Yes")}
+}
+```
+
+Nop, let's drop them too.
+
+```{r}
+library(data.table)
+oscars = data.table(oscars)
+oscars = na.omit(oscars, c("certificate"))
+dim(oscars)
+```
+
+And finally let's encode it...
+
+```{r}
+unique(oscars$certificate)
+oscars = oscars %>% mutate(certificate = replace(certificate, certificate == "PG-13", 3))
+oscars = oscars %>% mutate(certificate = replace(certificate, certificate == "G", 1))
+oscars = oscars %>% mutate(certificate = replace(certificate, certificate == "R", 4))
+oscars = oscars %>% mutate(certificate = replace(certificate, certificate == "PG", 2))
+oscars = oscars %>% mutate(certificate = replace(certificate, certificate == "TV-MA", 5))
+oscars$certificate = as.numeric(oscars$certificate)
+unique(oscars$certificate)
+```
+
+
+### Some more preprocessing:
+
+```{r}
+# Drops movie and movie_id and synopsis
+oscars$movie <- NULL
+oscars$movie_id <- NULL 
+oscars$synopsis <- NULL 
+
+# Drops the Oscars_category_won columns (will use them later as targets, but for now we cannot use them to predict)
+oscars$Oscar_Best_Actor_won <- NULL
+oscars$Oscar_Best_Actress_won <- NULL
+oscars$Oscar_Best_AdaScreen_won <- NULL
+oscars$Oscar_Best_Director_won <- NULL
+oscars$Oscar_Best_OriScreen_won <- NULL
+oscars$Oscar_Best_Picture_won <- NULL
+oscars$Oscar_Best_Supporting_Actor_won <- NULL
+oscars$Oscar_Best_Supporting_Actress_won <- NULL
+```
+
+And for when the rest of the preprocessing is done, this is for splitting. I would say let's use from 2000 to 2012 (75%) for training and from 2013 to 2016 for testing.
+```{r}
+# Splits by years
+oscars_train <- subset(oscars, year %in% c(2000:2012)) 
+oscars_test <- subset(oscars, year %in% c(2013:2016))
+# Gets the target
+y_train = oscars_train$Oscars_won_some
+y_test = oscars_test$Oscars_won_some
+# Drops the target column
+X_train <- oscars_train
+X_train$Oscars_won_some <- NULL
+X_test <- oscars_test
+X_test$Oscars_won_some <- NULL
+
+# Checking if our new objects make sense
+y_train
+sum(y_train)
+sapply(X_train, typeof)
+```
